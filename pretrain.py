@@ -1,0 +1,52 @@
+from __future__ import absolute_import
+import argparse
+import sys
+from transformers import BertForPreTraining, BertConfig
+import torch
+from model import MoBert
+
+
+if __name__ == "__main__":
+    # Parse arguments
+    parser = argparse.ArgumentParser(description="Pre-train the BERT or MoBERT")
+    parser.add_argument(
+        "--target",
+        "-t",
+        default="mobert",
+        choices=["mobert", "bert"],
+        help="Choose the model to be pre-trained",
+    )
+    args = parser.parse_args()
+
+    # Hyperparameters
+    epochs = 10
+    learning_rate = 5e-5
+
+    # Select the device
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    # TODO: Set the config of the bert
+    config = BertConfig()
+
+    if args.target == "mobert":
+        model = MoBert(config)
+    elif args.target == "bert":
+        model = BertForPreTraining(config)
+    else:
+        sys.exit(-1)
+
+    model = model.to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+    model.train()
+    for epoch in range(1, epochs + 1):
+        """ TODO: implement dataloader
+        for data in dataloader:
+            optimizer.zero_grad()
+            loss = model(data)[0]
+            loss.backward()
+            optimizer.step()
+        """
+
+        # Save the model in the checkpoint folder
+        model.save_pretrained("./checkpoint")
