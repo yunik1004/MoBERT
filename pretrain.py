@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
     # Hyperparameters
     PRINT_STEP = 1000
-    MODEL_SAVE_STEP = 5000
+    MODEL_SAVE_STEP = 50000
     BATCH_SIZE = 4
     LEARNING_RATE = 5e-5
 
