@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 import argparse
+import os
+from pathlib import Path
 import sys
 import torch
 from transformers import BertForPreTraining, BertConfig
@@ -17,9 +19,24 @@ if __name__ == "__main__":
         help="Choose the model to be pre-trained",
     )
     parser.add_argument(
-        "--output", "-o", default="./checkpoint", help="Directory of the output model"
+        "--output",
+        "-o",
+        default=os.path.join(".", "checkpoint", "pretrain"),
+        help="Output directory of the models",
     )
     args = parser.parse_args()
+
+    # Set the directories where the models will be saved
+    mobert_dir = os.path.join(args.output, "mobert")
+    mobert_bert_dir = os.path.join(args.output, "mobert_bert")
+    origin_dir = os.path.join(args.output, "origin")
+    origin_bert_dir = os.path.join(args.output, "origin_bert")
+
+    # If not exist, then create directories
+    Path(mobert_dir).mkdir(parents=True, exist_ok=True)
+    Path(mobert_bert_dir).mkdir(parents=True, exist_ok=True)
+    Path(origin_dir).mkdir(parents=True, exist_ok=True)
+    Path(origin_bert_dir).mkdir(parents=True, exist_ok=True)
 
     # Hyperparameters
     EPOCHS = 10
@@ -50,7 +67,8 @@ if __name__ == "__main__":
             """
 
             # Save the model in the checkpoint folder
-            model.save_pretrained(args.output)
+            model.save_pretrained(mobert_dir)
+            model.bert.save_pretrained(mobert_bert_dir)
 
     elif args.target == "bert":
         """
@@ -70,7 +88,8 @@ if __name__ == "__main__":
             """
 
             # Save the model in the checkpoint folder
-            model.save_pretrained(args.output)
+            model.save_pretrained(origin_dir)
+            model.bert.save_pretrained(origin_bert_dir)
 
     else:
         sys.exit(-1)

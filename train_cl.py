@@ -3,13 +3,13 @@ import argparse
 import os
 from pathlib import Path
 import torch
-from transformers import BertForQuestionAnswering
+from transformers import BertForSequenceClassification
 
 
 if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser(
-        description="Train the question answering model using pre-trained BERT or MoBERT"
+        description="Train the classification model using pre-trained BERT or MoBERT"
     )
     parser.add_argument(
         "--pretrain",
@@ -20,17 +20,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output",
         "-o",
-        default=os.path.join(".", "checkpoint", "qa"),
-        help="Output directory of the trained qa model",
+        default=os.path.join(".", "checkpoint", "cl"),
+        help="Output directory of the trained classification model",
     )
     args = parser.parse_args()
 
     # Set the directories where the models will be saved
     bert_dir = args.pretrain
-    qa_model_dir = args.output
+    cl_model_dir = args.output
 
     # If not exist, then create directories
-    Path(qa_model_dir).mkdir(parents=True, exist_ok=True)
+    Path(cl_model_dir).mkdir(parents=True, exist_ok=True)
 
     # Hyperparameters
     EPOCHS = 10
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Generate question answering model using pretrained bert
-    model = BertForQuestionAnswering.from_pretrained(bert_dir, num_labels=2)
+    model = BertForSequenceClassification.from_pretrained(bert_dir, num_labels=1)
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
@@ -55,4 +55,4 @@ if __name__ == "__main__":
             optimizer.step()
         """
 
-        model.save_pretrained(qa_model_dir)
+        model.save_pretrained(cl_model_dir)
