@@ -16,11 +16,14 @@ if __name__ == "__main__":
         choices=["mobert", "bert"],
         help="Choose the model to be pre-trained",
     )
+    parser.add_argument(
+        "--output", "-o", default="./checkpoint", help="Directory of the output model"
+    )
     args = parser.parse_args()
 
     # Hyperparameters
-    epochs = 10
-    learning_rate = 5e-5
+    EPOCHS = 10
+    LEARNING_RATE = 5e-5
 
     # Select the device
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -36,10 +39,10 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     model = model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     model.train()
-    for epoch in range(1, epochs + 1):
+    for epoch in range(1, EPOCHS + 1):
         """ TODO: implement dataloader
         for data in dataloader:
             optimizer.zero_grad()
@@ -49,4 +52,4 @@ if __name__ == "__main__":
         """
 
         # Save the model in the checkpoint folder
-        model.save_pretrained("./checkpoint")
+        model.save_pretrained(args.output)
