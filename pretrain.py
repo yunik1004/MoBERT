@@ -27,7 +27,17 @@ if __name__ == "__main__":
         default=os.path.join(".", "checkpoint", "pretrain"),
         help="Output directory of the models",
     )
+    parser.add_argument(
+        "--device",
+        "-d",
+        default="cuda" if torch.cuda.is_available() else "cpu",
+        help="Torch device",
+    )
     args = parser.parse_args()
+
+    # Torch settings
+    torch.set_num_threads(10)
+    device = torch.device(args.device)
 
     checkpoint_folder = os.path.join(
         args.output, datetime.datetime.now().strftime("%m-%d_%H-%M-%S")
@@ -56,10 +66,6 @@ if __name__ == "__main__":
     MODEL_SAVE_STEP = 5000
     BATCH_SIZE = 4
     LEARNING_RATE = 5e-5
-
-    # Select the device
-    torch.set_num_threads(10)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Generate the data loader
     wikidata = WikiDataset()
