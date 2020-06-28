@@ -23,7 +23,7 @@ class MoBert(BertPreTrainedModel):
 
         # For Morphological guessing
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+        self.classifier = nn.Linear(config.hidden_size, self.num_labels)
 
         # Initialize weights
         self.init_weights()
