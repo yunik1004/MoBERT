@@ -52,13 +52,14 @@ if __name__ == "__main__":
     log_writer = csv.writer(log_f)
 
     # Hyperparameters
-    PRINT_STEP = 10000
+    PRINT_STEP = 1000
+    MODEL_SAVE_STEP = 5000
     BATCH_SIZE = 4
     LEARNING_RATE = 5e-5
 
     # Select the device
     torch.set_num_threads(10)
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Generate the data loader
     wikidata = WikiDataset()
@@ -67,8 +68,13 @@ if __name__ == "__main__":
         pretraindata, BATCH_SIZE, collate_fn=pretrain_collate_fn
     )
 
-    # TODO: Set the config of the bert
-    config = BertConfig(num_hidden_layers=4, hidden_size=312, intermediate_size=1200)
+    # Set the config of the bert
+    config = BertConfig(
+        num_hidden_layers=4,
+        hidden_size=312,
+        intermediate_size=1200,
+        max_position_embeddings=1024,
+    )
 
     if args.target == "mobert":
         config.num_labels = pretraindata.token_num + 1
@@ -83,6 +89,8 @@ if __name__ == "__main__":
 
     step = 1
     total_loss = 0
+    total_loss_pre = 0
+    total_loss_cl = 0
     start = time.time()
     for src, mlm, mask, nsp, mt, token_type_ids in dataloader:
         src = src.to(device)
@@ -94,14 +102,18 @@ if __name__ == "__main__":
         optimizer.zero_grad()
 
         if args.target == "mobert":
-            loss = model(
+            out = model(
                 src,
                 attention_mask=mask,
                 token_type_ids=token_type_ids,
                 masked_lm_labels=mlm,
                 next_sentence_label=nsp,
                 labels=mt,
-            )[0]
+            )
+            loss = out[0]
+            loss_pre = out[-2]
+            loss_cl = out[-1]
+
         elif args.target == "bert":
             loss = model(
                 src,
@@ -114,17 +126,37 @@ if __name__ == "__main__":
         loss.backward()
         optimizer.step()
 
-        total_loss += loss.item() / BATCH_SIZE
+        total_loss += loss.item()
+        if args.target == "mobert":
+            total_loss_pre += loss_pre.item()
+            total_loss_cl += loss_cl.item()
 
         if step % PRINT_STEP == 0:
             avg_loss = total_loss / PRINT_STEP
-            avg_elapsed_time = (time.time() - start) / PRINT_STEP
-            log_writer.writerow([avg_loss, avg_elapsed_time])
-            log_f.flush()
-            print(
-                f"[Step {step}] Average loss: {avg_loss:.3f}\tAverage elapsed time: {avg_elapsed_time:3f}"
-            )
+            elapsed_time = time.time() - start
 
+            if args.target == "mobert":
+                avg_loss_pre = total_loss_pre / PRINT_STEP
+                avg_loss_cl = total_loss_cl / PRINT_STEP
+                print(
+                    f"[Step {step}] Elapsed time: {elapsed_time:.3f}\tAverage loss: {avg_loss:.3f}\tAverage loss_pre: {avg_loss_pre:.3f}\tAverage loss_cl: {avg_loss_cl:.3f}"
+                )
+                log_writer.writerow(
+                    [step, elapsed_time, avg_loss, avg_loss_pre, avg_loss_cl]
+                )
+            elif args.target == "bert":
+                print(
+                    f"[Step {step}] Elapsed time: {elapsed_time:.3f}\tAverage loss: {avg_loss:.3f}"
+                )
+                log_writer.writerow([step, elapsed_time, avg_loss])
+
+            log_f.flush()
+
+            total_loss = 0
+            total_loss_pre = 0
+            total_loss_cl = 0
+
+        if step % MODEL_SAVE_STEP == 0:
             # Save the model in the checkpoint folder
             mobert_dir_step = os.path.join(mobert_dir, str(step))
             mobert_bert_dir_step = os.path.join(mobert_bert_dir, str(step))
@@ -133,9 +165,6 @@ if __name__ == "__main__":
 
             model.save_pretrained(mobert_dir_step)
             model.bert.save_pretrained(mobert_bert_dir_step)
-
-            total_loss = 0
-            start = time.time()
 
         step += 1
 

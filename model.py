@@ -68,7 +68,7 @@ class MoBert(BertPreTrainedModel):
             and next_sentence_label is not None
             and labels is not None
         ):
-            loss_fct = nn.CrossEntropyLoss()
+            loss_fct = nn.CrossEntropyLoss(ignore_index=0)
 
             # Loss for pretraining
             masked_lm_loss = loss_fct(
@@ -97,6 +97,6 @@ class MoBert(BertPreTrainedModel):
             # Total loss = sum of two losses
             total_loss = loss_pre + loss_cl
 
-            outputs = (total_loss,) + outputs
+            outputs = (total_loss,) + outputs + (loss_pre, loss_cl)
 
-        return outputs  # (loss), prediction_scores, seq_relationship_scores, logits, (hidden_states), (attentions)
+        return outputs  # (loss), prediction_scores, seq_relationship_scores, logits, (hidden_states), (attentions), (loss_pre), (loss_cl)

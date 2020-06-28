@@ -12,9 +12,9 @@ from torch.nn.utils.rnn import pad_sequence
 class WikiDataset(Dataset):
     def __init__(self, train=True):
         if train:
-            path = ('/data/data_train.txt', '/data/pos_train.txt')
+            path = ("/data/data_train.txt", "/data/pos_train.txt")
         else:
-            path = ('/data/data_val.txt', '/data/pos_val.txt')
+            path = ("/data/data_val.txt", "/data/pos_val.txt")
         self.tokenizer = BertTokenizerFast("wiki-vocab.txt")
         self.paragraphs = [[]]
         self.pos_labels = set([])
@@ -30,12 +30,15 @@ class WikiDataset(Dataset):
                             valid = True
                     elif valid:
                         _d, _p = d.strip().split(), p.strip().split()
-                        if len(_p) > 256:
+                        if len(_d) != len(_p) or len(_p) > 256:
                             valid = False
                             self.paragraphs[-1] = []
                         else:
+                            assert len(_d) == len(_p), f"{len(_d)} {len(_p)}"
                             self.paragraphs[-1].append((_d, _p))
                             self.pos_labels |= set(_p)
+
+        print(len(self.paragraphs))
 
         self.pos_labels_to_ids = {}
         for i, pos_label in enumerate(sorted(self.pos_labels)):
@@ -58,7 +61,10 @@ class WikiDataset(Dataset):
             zip(self.tokenizer.batch_encode_plus(d)["input_ids"], p),
         )
         token_ids, pos_ids = zip(*converted_results)
-        return list(chain.from_iterable(token_ids)), list(chain.from_iterable(pos_ids))
+        return (
+            list(chain.from_iterable(token_ids))[:500],
+            list(chain.from_iterable(pos_ids))[:500],
+        )
 
     def __getitem__(self, idx):
         token_ids, pos_ids = zip(
