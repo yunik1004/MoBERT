@@ -13,6 +13,8 @@ class MoBert(BertPreTrainedModel):
     def __init__(self, config: BertConfig):
         super().__init__(config)
 
+        self.num_labels = config.num_labels
+
         # BERT model that we want to train
         self.bert = BertModel(config)
 
