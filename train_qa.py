@@ -1,23 +1,23 @@
 from __future__ import absolute_import
 import argparse
-import sys
 import torch
-from transformers import BertForPreTraining, BertConfig
-from model import MoBert
+from transformers import BertForQuestionAnswering
 
 
 if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser(description="Pre-train the BERT or MoBERT")
     parser.add_argument(
-        "--target",
-        "-t",
-        default="mobert",
-        choices=["mobert", "bert"],
-        help="Choose the model to be pre-trained",
+        "--pretrain",
+        "-p",
+        default="./checkpoint",
+        help="Directory of the pretrained model",
     )
     parser.add_argument(
-        "--output", "-o", default="./checkpoint", help="Directory of the output model"
+        "--output",
+        "-o",
+        default="./checkpoint/qa",
+        help="Directory of the trained qa model",
     )
     args = parser.parse_args()
 
@@ -28,18 +28,10 @@ if __name__ == "__main__":
     # Select the device
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # TODO: Set the config of the bert
-    config = BertConfig()
-    config.num_labels = 10
-
-    if args.target == "mobert":
-        model = MoBert(config)
-    elif args.target == "bert":
-        model = BertForPreTraining(config)
-    else:
-        sys.exit(-1)
-
+    # Generate question answering model using pretrained bert
+    model = BertForQuestionAnswering.from_pretrained(args.pretrain, num_labels=2)
     model = model.to(device)
+
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     model.train()
@@ -52,5 +44,4 @@ if __name__ == "__main__":
             optimizer.step()
         """
 
-        # Save the model in the checkpoint folder
         model.save_pretrained(args.output)
