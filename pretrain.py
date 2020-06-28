@@ -30,27 +30,47 @@ if __name__ == "__main__":
 
     # TODO: Set the config of the bert
     config = BertConfig()
-    config.num_labels = 10
 
     if args.target == "mobert":
-        model = MoBert(config)
+        """
+        Pre-train the MoBERT model
+        """
+        config.num_labels = 10
+        model = MoBert(config).to(device)
+        optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+        model.train()
+
+        for epoch in range(1, EPOCHS + 1):
+            """ TODO: implement dataloader
+            for data in dataloader:
+                optimizer.zero_grad()
+                loss = model(data)[0]
+                loss.backward()
+                optimizer.step()
+            """
+
+            # Save the model in the checkpoint folder
+            model.save_pretrained(args.output)
+
     elif args.target == "bert":
-        model = BertForPreTraining(config)
+        """
+        Pre-train the original BERT model
+        """
+        model = BertForPreTraining(config).to(device)
+        optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+        model.train()
+
+        for epoch in range(1, EPOCHS + 1):
+            """ TODO: implement dataloader
+            for data in dataloader:
+                optimizer.zero_grad()
+                loss = model(data)[0]
+                loss.backward()
+                optimizer.step()
+            """
+
+            # Save the model in the checkpoint folder
+            model.save_pretrained(args.output)
+
     else:
         sys.exit(-1)
-
-    model = model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
-
-    model.train()
-    for epoch in range(1, EPOCHS + 1):
-        """ TODO: implement dataloader
-        for data in dataloader:
-            optimizer.zero_grad()
-            loss = model(data)[0]
-            loss.backward()
-            optimizer.step()
-        """
-
-        # Save the model in the checkpoint folder
-        model.save_pretrained(args.output)
