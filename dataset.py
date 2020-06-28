@@ -1,5 +1,5 @@
 from torch.utils.data import Dataset, IterableDataset
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
 from transformers import BertTokenizerFast
 from itertools import chain
@@ -10,10 +10,13 @@ from torch.nn.utils.rnn import pad_sequence
 
 
 class WikiDataset(Dataset):
-    def __init__(self, path=("data/data.txt", "data/pos.txt"), lazy=False):
+    def __init__(self, train=True):
+        if train:
+            path = ('/data/data_train.txt', '/data/pos_train.txt')
+        else:
+            path = ('/data/data_val.txt', '/data/pos_val.txt')
         self.tokenizer = BertTokenizerFast("wiki-vocab.txt")
         self.paragraphs = [[]]
-        self.lazy = lazy
         self.pos_labels = set([])
 
         valid = True
@@ -21,10 +24,6 @@ class WikiDataset(Dataset):
             with open(path[1], encoding="utf-8") as f_pos:
                 for d, p in tqdm(zip(f_data, f_pos), desc="load_data"):
                     if len(d.strip()) == 0:
-                        """
-                        if len(self.paragraphs) > 100:
-                            break
-                        """
                         if len(self.paragraphs[-1]) > 0:
                             self.paragraphs.append([])
                         else:
@@ -48,7 +47,7 @@ class WikiDataset(Dataset):
 
     @property
     def pos_num(self):
-        return len(self.pos_labels)
+        return len(self.pos_labels) + 1
 
     def __len__(self):
         return len(self.paragraphs) - 1
@@ -115,8 +114,8 @@ class PretrainDataset(IterableDataset):
                 first_paragraph, first_pos_ids = self.dataset[first_idx]
                 second_paragraph, second_pos_ids = self.dataset[second_idx]
                 first_idx, second_idx = (
-                    random.randrange(len(first_paragraph) - 1),
-                    random.randrange(len(second_paragraph) - 1),
+                    random.randrange(len(first_paragraph)),
+                    random.randrange(len(second_paragraph)),
                 )
 
             source_sentences = [
@@ -218,11 +217,8 @@ def pretrain_collate_fn(samples):
 
 
 if __name__ == "__main__":
-    dataset = PretrainDataset(WikiDataset())
-    batch = []
-    for i, hi in enumerate(iter(dataset)):
-        print(hi)
-        batch.append(hi)
-        if i > 5:
-            break
-    print(pretrain_collate_fn(batch))
+    dataset = WikiDataset()
+    min_size = 1e10
+    for i in trange(len(dataset)):
+        min_size = min(min_size, len(dataset.paragraphs[i]))
+    print(min_size)

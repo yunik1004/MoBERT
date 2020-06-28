@@ -52,11 +52,12 @@ if __name__ == "__main__":
     log_writer = csv.writer(log_f)
 
     # Hyperparameters
-    PRINT_STEP = 100
+    PRINT_STEP = 10000
     BATCH_SIZE = 4
     LEARNING_RATE = 5e-5
 
     # Select the device
+    torch.set_num_threads(10)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Generate the data loader
@@ -119,6 +120,10 @@ if __name__ == "__main__":
             avg_loss = total_loss / PRINT_STEP
             avg_elapsed_time = (time.time() - start) / PRINT_STEP
             log_writer.writerow([avg_loss, avg_elapsed_time])
+            log_f.flush()
+            print(
+                f"[Step {step}] Average loss: {avg_loss:.3f}\tAverage elapsed time: {avg_elapsed_time:3f}"
+            )
 
             # Save the model in the checkpoint folder
             mobert_dir_step = os.path.join(mobert_dir, str(step))
@@ -129,6 +134,7 @@ if __name__ == "__main__":
             model.save_pretrained(mobert_dir_step)
             model.bert.save_pretrained(mobert_bert_dir_step)
 
+            total_loss = 0
             start = time.time()
 
         step += 1
