@@ -40,9 +40,19 @@ class WikiDataset(Dataset):
 
         print(len(self.paragraphs))
 
-        self.pos_labels_to_ids = {}
-        for i, pos_label in enumerate(sorted(self.pos_labels)):
-            self.pos_labels_to_ids[pos_label] = i + 1
+        if train:
+            self.pos_labels_to_ids = {}
+            for i, pos_label in enumerate(sorted(self.pos_labels)):
+                self.pos_labels_to_ids[pos_label] = i + 1
+        else:
+            with open('./pretrain.wiki.dict') as f:
+                self.pos_labels_to_ids = eval(f.read())
+                
+            i = len(self.pos_labels_to_ids)
+            for _, pos_label in enumerate(sorted(self.pos_labels)):
+                if pos_label not in self.pos_labels_to_ids:
+                    self.pos_labels_to_ids[pos_label] = i
+                    i += 1
 
     @property
     def token_num(self):
