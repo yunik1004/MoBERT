@@ -59,7 +59,7 @@ if __name__ == "__main__":
     # Hyperparameters
     EPOCHS = 100
     LEARNING_RATE = 5e-5
-    BATCH_SIZE = 64
+    BATCH_SIZE = 32
 
     # Generate the data loader
     dataset = NaverSentimentDataset()
@@ -71,12 +71,14 @@ if __name__ == "__main__":
         batch_size=BATCH_SIZE,
         shuffle=True,
         collate_fn=train_dataset.dataset.collate_fn,
+        num_workers=2,
     )
     val_loader = torch.utils.data.DataLoader(
         val_dataset,
         batch_size=BATCH_SIZE,
         shuffle=False,
         collate_fn=val_dataset.dataset.collate_fn,
+        num_workers=2,
     )  # shuffle is not needed for validation
 
     # Generate question answering model using pretrained bert
