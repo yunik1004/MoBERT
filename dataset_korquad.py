@@ -69,7 +69,8 @@ class KorquadDataset(Dataset):
         return [2, *chain.from_iterable(converted_results), 3]
 
     def decode(self, token_ids):
-        return self.tokenizer.decode(token_ids)
+        decode_str = self.tokenizer.decode(token_ids, skip_special_tokens=True)
+        return decode_str
 
     def __getitem__(self, idx):
         return self.qas[idx]
