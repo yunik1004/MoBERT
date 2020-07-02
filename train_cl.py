@@ -59,7 +59,7 @@ if __name__ == "__main__":
     # Hyperparameters
     EPOCHS = 100
     LEARNING_RATE = 5e-5
-    BATCH_SIZE = 32
+    BATCH_SIZE = 64
 
     # Generate the data loader
     dataset = NaverSentimentDataset()
@@ -87,8 +87,8 @@ if __name__ == "__main__":
 
     start = time.time()
     for epoch in range(1, EPOCHS + 1):
-        total_train_loss = 0
-        num_train_data = 0
+        total_train_loss = 0.0
+        total_train_accuracy = 0
 
         # Training
         model.train()
@@ -100,25 +100,32 @@ if __name__ == "__main__":
             input_ids = input_ids.to(device)
             token_type_ids = token_type_ids.to(device)
             attention_mask = attention_mask.to(device)
+            rating_bool = rating.bool().to(device)
             rating = rating.float().to(device)
 
-            loss = model(
+            out = model(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
                 token_type_ids=token_type_ids,
                 labels=rating,
-            )[0]
+            )
+            loss = out[0]
+            logits = (out[1] >= 0.5).squeeze()
+            accurate = ~(rating_bool ^ logits)
+            accuracy = accurate.sum()
+
             loss.backward()
             optimizer.step()
 
-            total_train_loss += loss.item()
-            num_train_data += 1
+            total_train_loss += loss.item() * rating.size(0)
+            total_train_accuracy += accuracy.item()
 
-        avg_train_loss = total_train_loss / num_train_data
+        avg_train_loss = total_train_loss / len(train_dataset)
+        avg_train_accuracy = total_train_accuracy / len(train_dataset)
 
         # Validation
-        total_val_loss = 0
-        num_val_data = 0
+        total_val_loss = 0.0
+        total_val_accuracy = 0
 
         model.eval()
         with torch.no_grad():
@@ -126,26 +133,42 @@ if __name__ == "__main__":
                 input_ids = input_ids.to(device)
                 token_type_ids = token_type_ids.to(device)
                 attention_mask = attention_mask.to(device)
+                rating_bool = rating.bool().to(device)
                 rating = rating.float().to(device)
 
-                loss = model(
+                out = model(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
                     token_type_ids=token_type_ids,
                     labels=rating,
-                )[0]
+                )
+                loss = out[0]
+                logits = (out[1] >= 0.5).squeeze()
+                accurate = ~(rating_bool ^ logits)
+                accuracy = accurate.sum()
 
-                total_val_loss += loss.item()
-                num_val_data += 1
+                total_val_loss += loss.item() * rating.size(0)
+                total_val_accuracy += accuracy.item()
 
-        avg_val_loss = total_val_loss / num_val_data
+        avg_val_loss = total_val_loss / len(val_dataset)
+        avg_val_accuracy = total_val_accuracy / len(val_dataset)
 
         # Show the output
         elapsed_time = time.time() - start
         print(
-            f"[Epoch {epoch}] Elapsed time: {elapsed_time:.3f}\tAverage train loss: {avg_train_loss:.3f}\tAverage validation loss: {avg_val_loss:.3f}"
+            f"[Epoch {epoch}] Elapsed time: {elapsed_time:.3f}\tAverage train loss: {avg_train_loss:.3f}\tAverage train accuracy: {avg_train_accuracy:.3f}\tAverage validation loss: {avg_val_loss:.3f}\tAverage validation accuracy: {avg_val_accuracy:.3f}"
         )
-        log_writer.writerow([epoch, elapsed_time, avg_train_loss, avg_val_loss])
+        log_writer.writerow(
+            [
+                epoch,
+                elapsed_time,
+                avg_train_loss,
+                avg_train_accuracy,
+                avg_val_loss,
+                avg_val_accuracy,
+            ]
+        )
+        log_f.flush()
 
         bert_dir_epoch = os.path.join(cl_model_dir, str(epoch))
         Path(bert_dir_epoch).mkdir(parents=True, exist_ok=True)
