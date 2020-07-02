@@ -9,6 +9,7 @@ import torch
 from tqdm.auto import tqdm
 from transformers import BertForQuestionAnswering
 from dataset_korquad import KorquadDataset
+from evaluate_korquad import exact_match_score, f1_score
 
 
 if __name__ == "__main__":
@@ -58,7 +59,7 @@ if __name__ == "__main__":
     # Hyperparameters
     EPOCHS = 100
     LEARNING_RATE = 5e-5
-    BATCH_SIZE = 4
+    BATCH_SIZE = 32
 
     # Generate the data loader
     dataset = KorquadDataset()
@@ -89,6 +90,8 @@ if __name__ == "__main__":
     start = time.time()
     for epoch in range(1, EPOCHS + 1):
         total_train_loss = 0.0
+        total_train_em = 0.0
+        total_train_f1 = 0.0
 
         # Training
         model.train()
@@ -114,15 +117,36 @@ if __name__ == "__main__":
             start_logits = out[1]
             end_logits = out[2]
 
+            start_ids = torch.argmax(start_logits, dim=1)
+            end_ids = torch.argmax(end_logits, dim=1)
+
             loss.backward()
             optimizer.step()
 
-            total_train_loss += loss.item() * input_ids.size(0)
+            num_batch = input_ids.size(0)
+            total_train_loss += loss.item() * num_batch
+
+            for b in range(num_batch):
+                token_ids_ans = input_ids[b, start_pos[b] : end_pos[b] + 1].tolist()
+                token_ids_pred = input_ids[b, start_ids[b] : end_ids[b] + 1].tolist()
+
+                decode_ans = dataset.decode(token_ids_ans)
+                decode_pred = dataset.decode(token_ids_pred)
+
+                em = exact_match_score(decode_pred, decode_ans)
+                f1 = f1_score(decode_pred, decode_ans)
+
+                total_train_em += em
+                total_train_f1 += f1
 
         avg_train_loss = total_train_loss / len(train_dataset)
+        avg_train_em = total_train_em / len(train_dataset)
+        avg_train_f1 = total_train_f1 / len(train_dataset)
 
         # Validation
         total_val_loss = 0.0
+        total_val_em = 0.0
+        total_val_f1 = 0.0
 
         model.eval()
         with torch.no_grad():
@@ -150,17 +174,49 @@ if __name__ == "__main__":
                 start_logits = out[1]
                 end_logits = out[2]
 
-                total_val_loss += loss.item() * input_ids.size(0)
+                start_ids = torch.argmax(start_logits, dim=1)
+                end_ids = torch.argmax(end_logits, dim=1)
+
+                num_batch = input_ids.size(0)
+                total_val_loss += loss.item() * num_batch
+
+                for b in range(num_batch):
+                    token_ids_ans = input_ids[b, start_pos[b] : end_pos[b] + 1].tolist()
+                    token_ids_pred = input_ids[
+                        b, start_ids[b] : end_ids[b] + 1
+                    ].tolist()
+
+                    decode_ans = dataset.decode(token_ids_ans)
+                    decode_pred = dataset.decode(token_ids_pred)
+
+                    em = exact_match_score(decode_pred, decode_ans)
+                    f1 = f1_score(decode_pred, decode_ans)
+
+                    total_val_em += em
+                    total_val_f1 += f1
 
         avg_val_loss = total_val_loss / len(val_dataset)
+        avg_val_em = total_val_em / len(val_dataset)
+        avg_val_f1 = total_val_f1 / len(val_dataset)
 
         # Show the output
         elapsed_time = time.time() - start
         print(
-            f"[Epoch {epoch}] Elapsed time: {elapsed_time:.3f}\tAverage train loss: {avg_train_loss:.3f}\tAverage validation loss: {avg_val_loss:.3f}"
+            f"[Epoch {epoch}] Elapsed time: {elapsed_time:.3f}\tAverage train loss: {avg_train_loss:.3f}\tAverage train EM: {avg_train_em:.3f}\tAverage train F1-score: {avg_train_f1:.3f}\tAverage validation loss: {avg_val_loss:.3f}\tAverage validation EM: {avg_val_em:.3f}\tAverage validation F1-score: {avg_val_f1:.3f}"
         )
 
-        log_writer.writerow([epoch, elapsed_time, avg_train_loss, avg_val_loss])
+        log_writer.writerow(
+            [
+                epoch,
+                elapsed_time,
+                avg_train_loss,
+                avg_train_em,
+                avg_train_f1,
+                avg_val_loss,
+                avg_val_em,
+                avg_val_f1,
+            ]
+        )
         log_f.flush()
 
         bert_dir_epoch = os.path.join(qa_model_dir, str(epoch))

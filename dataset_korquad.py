@@ -68,6 +68,9 @@ class KorquadDataset(Dataset):
             self.tokenizer.batch_encode_plus(line)["input_ids"])
         return [2, *chain.from_iterable(converted_results), 3]
 
+    def decode(self, token_ids):
+        return self.tokenizer.decode(token_ids)
+
     def __getitem__(self, idx):
         return self.qas[idx]
     
